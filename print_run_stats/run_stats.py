@@ -98,7 +98,11 @@ if __name__ == "__main__":
         mytimes  = times[0:mylength]
 
         for i in range(1):
-            evt = run.event(mytimes[i])
+            try :
+                evt = run.event(mytimes[i])
+            except :
+                print 'could not extract any events for run:', run.run()
+                continue
             evtId = evt.get(psana.EventId)
             run_length = len(times)
             #print run_length,zample_detector_encoded, '\t\t\t\t', evtId
