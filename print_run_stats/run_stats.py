@@ -5,7 +5,7 @@ import os
 import argparse
 import ConfigParser
 import numpy as np
-#import psana
+import psana
 import time
 import datetime
 
