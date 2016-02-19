@@ -3,6 +3,7 @@ Just screen dumps:
 * epics pvNames 
 * epics aliases 
 * psana data type and source  
+
 variables for the first event in a given run.
 
 ### Usage
@@ -20,7 +21,7 @@ optional arguments:
                         psana source string (e.g exp=cxi01516:run=10:idx)
 ```
 
-You can supply the psana data source through the config file:
+You can supply the psana data source through the config.ini file:
 ```
 [source]
 exp  = cxi01516

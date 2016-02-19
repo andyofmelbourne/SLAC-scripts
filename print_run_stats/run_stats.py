@@ -91,6 +91,8 @@ if __name__ == "__main__":
     #ds = psana.DataSource('exp=cxig4415:run=23:idx')
     ds = psana.DataSource(source)
 
+    header_init = True
+
     i = 0
     for run in ds.runs():
         times    = run.times()
@@ -101,7 +103,7 @@ if __name__ == "__main__":
             try :
                 evt = run.event(mytimes[i])
             except :
-                print '\ncould not extract any events for run:', run.run()
+                print 'could not extract any events for run:', run.run()
                 continue
             evtId = evt.get(psana.EventId)
             run_length = len(times)
@@ -118,12 +120,18 @@ if __name__ == "__main__":
             except :
                 pulse_length = 'NA'
 
-            try :
-                beam = evt.get(psana.Bld.BldDataEBeamV7, psana.Source('BldInfo(EBeam)'))
-                photon_energy_ev = beam.ebeamPhotonEnergy()
-                photon_energy_ev *= 1.0e-3
-            except :
-                photon_energy_ev = 'NA'
+            # loop over frames untill we get something
+            for j in range(100):
+                try :
+                    evt = run.event(mytimes[i+j])
+                    beam = evt.get(psana.Bld.BldDataEBeamV7, psana.Source('BldInfo(EBeam)'))
+                    photon_energy_ev = beam.ebeamPhotonEnergy()
+                    photon_energy_ev *= 1.0e-3
+                except :
+                    photon_energy_ev = 'NA'
+                
+                if photon_energy_ev != 'NA' :
+                    break
 
             timestring = str(evtId).split('time=')[1].split(',')[0]
             timestamp = time.strptime(timestring[:-6],'%Y-%m-%d %H:%M:%S.%f')
@@ -169,10 +177,13 @@ if __name__ == "__main__":
                 header.append('st')
                 outputstr.append( timestring[11:19] )
 
-            for h in header:
-                print h, '\t',
+            if header_init :
+                for h in header:
+                    print h, '\t',
 
-            print '\n'
+                print '\n'
+                header_init = False
 
             for o in outputstr:
                 print o,
+            print ''
