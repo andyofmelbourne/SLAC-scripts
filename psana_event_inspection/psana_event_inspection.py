@@ -5,19 +5,21 @@ import os
 import argparse
 import ConfigParser
 import numpy as np
-import psana
 import time
 import datetime
 
 def parse_cmdline_args():
     parser = argparse.ArgumentParser(description='print slac psana event variables')
-    parser.add_argument('config', type=str, \
+    parser.add_argument('-c', '--config', type=str, \
                         help="file name of the configuration file")
+    parser.add_argument('-s', '--source', type=str, \
+                help="psana source string (e.g exp=cxi01516:run=10:idx)")
     args = parser.parse_args()
 
     # check that args.ini exists
-    if not os.path.exists(args.config):
-        raise NameError('config file does not exist: ' + args.config)
+    if args.config is not None :
+        if not os.path.exists(args.config):
+            raise NameError('config file does not exist: ' + args.config)
     return args
 
 def parse_parameters(config):
@@ -94,16 +96,18 @@ def my_psana_from_string(name):
 if __name__ == "__main__":
     args = parse_cmdline_args()
     
-    config = ConfigParser.ConfigParser()
-    config.read(args.config)
-    
-    params = parse_parameters(config)
-
-    source = 'exp='+params['source']['exp']+':'+'run='+params['source']['runs']+':smd'
+    if args.source is None :
+        config = ConfigParser.ConfigParser()
+        config.read(args.config)
+        params = parse_parameters(config)
+        source = 'exp='+params['source']['exp']+':'+'run='+params['source']['runs']+':idx'
+    else :
+        source = args.source
 
     print '\ndata source :', source
 
     print '\nOpening dataset...'
+    import psana
     ds = psana.DataSource(source)
 
     print '\nEpics pv Names (the confusing ones):'
@@ -115,8 +119,9 @@ if __name__ == "__main__":
 
 
     print '\nEvent structure:'
-    itr = ds.events()
-    evt = itr.next()
+    run    = ds.runs().next()
+    times  = run.times()
+    evt    = run.event(times[0])
     for k in evt.keys():
         print 'type:', k.type(), 'source:', k.src(), 'alias:', k.alias(), 'key:', k.key()
 
