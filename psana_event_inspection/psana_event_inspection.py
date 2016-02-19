@@ -99,7 +99,7 @@ if __name__ == "__main__":
     
     params = parse_parameters(config)
 
-    source = 'exp='+params['source']['exp']+':'+'run='+params['source']['runs']+':idx'
+    source = 'exp='+params['source']['exp']+':'+'run='+params['source']['runs']+':smd'
 
     print '\ndata source :', source
 

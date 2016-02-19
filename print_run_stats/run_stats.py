@@ -104,10 +104,23 @@ if __name__ == "__main__":
             #print run_length,zample_detector_encoded, '\t\t\t\t', evtId
 
             epics = ds.env().epicsStore()
-            #zample_detector_encoded = epics.value('CXI:DS1:MMS:06.RBV') * 1.0e-3 + 0.5
-            zample_detector_encoded = epics.value('CXI:DS2:MMS:06.RBV') * 1.0e-3 + 0.56
+            try :
+                zample_detector_encoded = epics.value(params['epics']['zstage']) * 1.0e-3 + 0.56
+            except :
+                zample_detector_encoded = 999
 
-            pulse_length = epics.value('SIOC:SYS0:ML00:AO820')
+            try :
+                pulse_length = epics.value(params['epics']['zstage'])
+            except :
+                pulse_length = 999
+
+            try :
+                beam = evt.get(psana.Bld.BldDataEBeamV7, psana.Source('BldInfo(EBeam)'))
+                photon_energy_ev = beam.ebeamPhotonEnergy()
+                photon_energy_ev *= 1.0e-3
+            except :
+                photon_energy_ev = 999
+                print 'error extracting photon energy'
 
             timestring = str(evtId).split('time=')[1].split(',')[0]
             timestamp = time.strptime(timestring[:-6],'%Y-%m-%d %H:%M:%S.%f')
@@ -133,12 +146,7 @@ if __name__ == "__main__":
 
             if params['output']['photon_energy']:
                 header.append('photon_energy')
-                try :
-                    beam = evt.get(psana.Bld.BldDataEBeamV7, psana.Source('BldInfo(EBeam)'))
-                    photon_energy_ev = beam.ebeamPhotonEnergy()
-                    outputstr.append(str(photon_energy_ev * 1.0e-3))
-                except :
-                    print 'error extracting photon energy'
+                outputstr.append(str(photon_energy_ev))
 
             if params['output']['seconds']:
                 header.append('seconds')
