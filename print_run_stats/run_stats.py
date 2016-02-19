@@ -101,7 +101,7 @@ if __name__ == "__main__":
             try :
                 evt = run.event(mytimes[i])
             except :
-                print 'could not extract any events for run:', run.run()
+                print '\ncould not extract any events for run:', run.run()
                 continue
             evtId = evt.get(psana.EventId)
             run_length = len(times)
@@ -171,7 +171,7 @@ if __name__ == "__main__":
                 outputstr.append( timestring[11:19] )
 
             for h in header:
-                print h,
+                print h, '\t',
 
             print '\n'
 
