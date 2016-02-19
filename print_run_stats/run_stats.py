@@ -111,20 +111,19 @@ if __name__ == "__main__":
             try :
                 zample_detector_encoded = epics.value(params['epics']['zstage']) * 1.0e-3 + 0.56
             except :
-                zample_detector_encoded = 999
+                zample_detector_encoded = 'NA'
 
             try :
                 pulse_length = epics.value(params['epics']['zstage'])
             except :
-                pulse_length = 999
+                pulse_length = 'NA'
 
             try :
                 beam = evt.get(psana.Bld.BldDataEBeamV7, psana.Source('BldInfo(EBeam)'))
                 photon_energy_ev = beam.ebeamPhotonEnergy()
                 photon_energy_ev *= 1.0e-3
             except :
-                photon_energy_ev = 999
-                print 'error extracting photon energy'
+                photon_energy_ev = 'NA'
 
             timestring = str(evtId).split('time=')[1].split(',')[0]
             timestamp = time.strptime(timestring[:-6],'%Y-%m-%d %H:%M:%S.%f')
