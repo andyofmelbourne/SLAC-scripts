@@ -16,6 +16,20 @@ optional arguments:
                         psana source string (e.g exp=cxi01516:run=10:idx)
 ```
 
+Although it would be better if you used SLACs batch jobs system:
+```
+$ bsub -q psanaq -a mympi -n 32 -o test.out python darkcal.py -c config.ini
+```
+to check the status of your jobs:
+```
+$ bjobs -w -a
+```
+and to see the output of the running job:
+```
+$ tail -f test.out
+```
+
+
 You can supply the psana data source and output file stuff through the config.ini file:
 ```
 [source]
@@ -34,7 +48,7 @@ h5dir  = '/reg/d/psdm/CXI/cxi01516/scratch/amorgan/darkcal/'
 ```
 or the command line:
 ```
-$ python psana_event_inspection.py -s exp=cxi01516:run=14:idx
+$ mpirun -np 4 python psana_event_inspection.py -s exp=cxi01516:run=14:idx
 ```
 in which case the config.ini file is used for all other parameters.
 

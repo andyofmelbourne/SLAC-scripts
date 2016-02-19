@@ -117,14 +117,22 @@ if __name__ == "__main__":
     detector_psana_source = psana.Source(params['source']['detector_psana_source'])
     detector_psana_type   = psana_obj_from_string(params['source']['detector_psana_type'])
 
-    #cspad_sum = np.zeros((4, 512, 512), np.int64) # pnccd
-    cspad_sum = None
-    def evt_to_array(evt):
+    #im_sum = np.zeros((4, 512, 512), np.int64) # pnccd
+    im_sum = None
+    
+    def evt_to_array(evt, slab=False, slab_shape = (1480, 1552), native_shape = (4, 8, 185, 388)):
         im    = evt.get(detector_psana_type, detector_psana_source)
         try :
             im_np = np.array([im.quads(j).data() for j in range(im.quads_shape()[0])])
         except :
             im_np = np.array([im.frame(j).data() for j in range(im.frame_shape()[0])])
+
+        if slab :
+            im_ij = np.zeros(slab_shape, dtype=im_np.dtype)
+            for i in range(im_np.shape[0]):
+                im_ij[:, i * native_shape[3]: (i+1) * native_shape[3]] = \
+                        im_np[i].reshape((native_shape[1] * native_shape[2], native_shape[3]))
+            im_np = im_ij
         return im_np
 
     # output
@@ -158,11 +166,11 @@ if __name__ == "__main__":
         for i in range(mylength):
             try :
                 evt        = run.event(mytimes[i])
-                cspad_np   = evt_to_array(evt)
-                if cspad_sum is None :
-                    cspad_sum = cspad_np.astype(np.int64)
+                im_np      = evt_to_array(evt, params['output']['slab'])
+                if im_sum is None :
+                    im_sum = im_np.astype(np.int64)
                 else :
-                    cspad_sum += cspad_np
+                    im_sum += im_np
             except Exception as e:
                 print e
                 dropped_events += 1
@@ -171,38 +179,15 @@ if __name__ == "__main__":
                 print 'no. of evnts, rank, dropped: {0:5d} {1:3} {2:3} {3} \r'.format(i, rank, dropped_events, evt.get(psana.EventId)),
                 sys.stdout.flush()
 
-    cspad_sum_global = np.empty_like(cspad_sum)
-    comm.Reduce(cspad_sum, cspad_sum_global)
+    im_sum_global = np.empty_like(im_sum)
+    comm.Reduce(im_sum, im_sum_global)
     if rank == 0:
         print ''
         print ''
         print 'outputing the global sum...', h5dir, h5name, h5path
         f = h5py.File(h5dir + h5name, 'w')
-        f.create_dataset(h5path, data = cspad_sum_global)
+        f.create_dataset(h5path, data = im_sum_global)
         f.create_dataset('number of frames', data = len(times))
         f.close()
-
-    sys.exit()
-
-"""
-### To run this file execute
- ssh psana 
- . /reg/g/psdm/etc/ana_env.sh
- mpirun -n 8 python cspadSum.py
-
-#### options
-# input
-ds        = psana.DataSource('exp=amo86615:run=169:idx')
-cspad_sum = np.zeros((4, 512, 512), np.int64) # pnccd
-def evt_to_array(evt):
-    im    = evt.get(psana.PNCCD.FramesV1, psana.Source('DetInfo(Camp.0:pnCCD.1)'))
-    im_np = np.array([im.frame(j).data() for j in range(im.frame_shape()[0])])
-    return im_np
-
-# output
-h5name = 'amo86615-pnccd-back-sum-r0169.h5'
-h5path = 'data/data'
-h5dir  = './'
-"""
 
 
