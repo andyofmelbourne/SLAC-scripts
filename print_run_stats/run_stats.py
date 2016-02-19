@@ -84,10 +84,6 @@ if __name__ == "__main__":
     source = 'exp='+params['source']['exp']+':'+'run='+params['source']['runs']+':idx'
     print source
 
-    sys.exit()
-
-    #source = 'exp=cxif5315:run='+runs+':idx'
-    source = 'exp=cxi86715:run='+runs+':idx'
     print 'data source', source
     #run_name = '0001'
     #ds = psana.DataSource('exp=cxig2614:run='+run_name+':idx')
