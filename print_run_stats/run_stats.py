@@ -162,29 +162,10 @@ if __name__ == "__main__":
                 header.append('st')
                 outputstr.append( timestring[11:19] )
 
-            if sys.argv[2] == 'id':
-                print str(evtId)
-            elif sys.argv[2] == 'l':
-                print run_length
+            for h in header:
+                print h,
 
-            elif sys.argv[2] == 'z':
-                print zample_detector_encoded * 1.0e3
-            elif sys.argv[2] == 'pl':
-                print pulse_length
-            elif sys.argv[2] == 'en':
-                try :
-                    beam = evt.get(psana.Bld.BldDataEBeamV7, psana.Source('BldInfo(EBeam)'))
-                    photon_energy_ev = beam.ebeamPhotonEnergy()
-                    print photon_energy_ev * 1.0e-3
-                except :
-                    print 'error extracting photon energy'
-            elif sys.argv[2] == 'lt':
-                print str(int((mytimes[-1].seconds() - mytimes[0].seconds())/3600.))+':'\
-                      +str(int((mytimes[-1].seconds() - mytimes[0].seconds())/60.))+':'\
-                      +str(int(mytimes[-1].seconds() - mytimes[0].seconds()) % 60)
-            elif sys.argv[2] == 'ls':
-                print (mytimes[-1].seconds() - mytimes[0].seconds())
-            elif sys.argv[2] == 'date':
-                print timestring[:10]
-            elif sys.argv[2] == 'st':
-                print timestring[11:19]
+            print '\n'
+
+            for o in outputstr:
+                print o,
