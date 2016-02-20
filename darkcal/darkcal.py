@@ -7,7 +7,7 @@ import ConfigParser
 import numpy as np
 
 def parse_cmdline_args():
-    parser = argparse.ArgumentParser(prog = 'mpirun -np [NUM] [OPTIONS] darkcal.py', description='print slac psana event variables')
+    parser = argparse.ArgumentParser(prog = 'mpirun -np [NUM] [OPTIONS] darkcal.py', description='calculate the raw sum of all frames in a run')
     parser.add_argument('-c', '--config', type=str, \
                         help="file name of the configuration file")
     parser.add_argument('-s', '--source', type=str, \
@@ -107,7 +107,7 @@ if __name__ == "__main__":
         run = params['source']['run']
     else :
         source = args.source
-        exp = source.split('=')[0].split(':')[0]
+        exp = source.split('=')[1].split(':')[0]
         run = source.split('=')[2].split(':')[0]
     
     import psana
@@ -120,20 +120,22 @@ if __name__ == "__main__":
     #im_sum = np.zeros((4, 512, 512), np.int64) # pnccd
     im_sum = None
     
-    def evt_to_array(evt, slab=False, slab_shape = (1480, 1552), native_shape = (4, 8, 185, 388)):
+    def evt_to_array(evt):
         im    = evt.get(detector_psana_type, detector_psana_source)
         try :
             im_np = np.array([im.quads(j).data() for j in range(im.quads_shape()[0])])
         except :
             im_np = np.array([im.frame(j).data() for j in range(im.frame_shape()[0])])
 
-        if slab :
-            im_ij = np.zeros(slab_shape, dtype=im_np.dtype)
-            for i in range(im_np.shape[0]):
-                im_ij[:, i * native_shape[3]: (i+1) * native_shape[3]] = \
-                        im_np[i].reshape((native_shape[1] * native_shape[2], native_shape[3]))
-            im_np = im_ij
         return im_np
+
+    def native_to_slab(im_np, slab_shape = (1480, 1552), native_shape = (4, 8, 185, 388)):
+        im_ij = np.zeros(slab_shape, dtype=im_np.dtype)
+        for i in range(im_np.shape[0]):
+            im_ij[:, i * native_shape[3]: (i+1) * native_shape[3]] = \
+                    im_np[i].reshape((native_shape[1] * native_shape[2], native_shape[3]))
+        return im_ij
+
 
     # output
     import string
@@ -166,7 +168,7 @@ if __name__ == "__main__":
         for i in range(mylength):
             try :
                 evt        = run.event(mytimes[i])
-                im_np      = evt_to_array(evt, params['output']['slab'])
+                im_np      = evt_to_array(evt)
                 if im_sum is None :
                     im_sum = im_np.astype(np.int64)
                 else :
@@ -185,9 +187,15 @@ if __name__ == "__main__":
         print ''
         print ''
         print 'outputing the global sum...', h5dir, h5name, h5path
+
         f = h5py.File(h5dir + h5name, 'w')
         f.create_dataset(h5path, data = im_sum_global)
         f.create_dataset('number of frames', data = len(times))
+        
+        if params['output']['slab'] :
+            im_slab = native_to_slab(im_sum_global)
+            f.create_dataset('data/slab', data = im_slab)
+         
         f.close()
 
 

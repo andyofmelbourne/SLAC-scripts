@@ -29,7 +29,6 @@ and to see the output of the running job:
 $ tail -f test.out
 ```
 
-
 You can supply the psana data source and output file stuff through the config.ini file:
 ```
 [source]
@@ -51,4 +50,10 @@ or the command line:
 $ mpirun -np 4 python psana_event_inspection.py -s exp=cxi01516:run=14:idx
 ```
 in which case the config.ini file is used for all other parameters.
+
+
+### Trouble shooting
+* Something wrong with the psana source? Check that you have set detector_psana_source and detector_psana_type correctly with SLAC-scripts/psana_event_inspection.
+* Will not output with slab = True? This is probably because the LCLS has done something funny with the data shapes. Or it could be because you are looking at pnccd data (not implimented yet).
+* Why not look at the slab shaped or geometry corrected output? You can use https://github.com/andyofmelbourne/CsPadMaskMaker.git to do this.
 
