@@ -190,41 +190,42 @@ if __name__ == "__main__":
             print 'Number of frames to process:', len(times)
         
         for i in range(len(times)):
-            #try :
-            evt = run.event(times[i])
-            
-            # add to buffer
-            #temp = evt_to_array(evt, rank)
-            #print rank, buffer.shape, temp.shape
-            #buffer[j] = temp
-            buffer[j] = evt_to_array(evt, rank)
-            j += 1
-
-            if j == buffersize  :
-                j = 0
-
-                # darkcal
-                buffer -= darkcal
+            try :
+                evt = run.event(times[i])
                 
-                # common mode
-                medians  = np.median(buffer, axis=-1)
-                buffer  -= medians[..., np.newaxis]
+                # add to buffer
+                #temp = evt_to_array(evt, rank)
+                #print rank, buffer.shape, temp.shape
+                #buffer[j] = temp
+                buffer[j] = evt_to_array(evt, rank)
+                j += 1
 
-                # add the histogram of the buffer to the histogram
-                # ------------------------------------------------
-                # loop over each pixel
-                buffer_T = buffer.T.reshape((-1, buffer.shape[0]), order='F')
-                
-                for ii in range(buffer_T.shape[0]):
-                    #h, b          = np.histogram(buffer[:, ii, jj], bins=bins)
-                    a             = np.rint(buffer_T[ii]).astype(np.int)
-                    a             = a[np.where(a < bins[-1])]
-                    a            -= bins[0]
-                    a             = a[np.where(a >= 0)]
-                    h             = np.bincount( a, minlength=bins.shape[0]-1)
-                    hist[np.unravel_index(ii, (hist.shape[:-1]))] += h
-            #except :
-            #    dropped_events += 1
+                if j == buffersize  :
+                    j = 0
+
+                    # darkcal
+                    buffer -= darkcal
+                    
+                    # common mode
+                    medians  = np.median(buffer, axis=-1)
+                    buffer  -= medians[..., np.newaxis]
+
+                    # add the histogram of the buffer to the histogram
+                    # ------------------------------------------------
+                    # loop over each pixel
+                    buffer_T = buffer.T.reshape((-1, buffer.shape[0]), order='F')
+                    
+                    for ii in range(buffer_T.shape[0]):
+                        #h, b          = np.histogram(buffer[:, ii, jj], bins=bins)
+                        a             = np.rint(buffer_T[ii]).astype(np.int)
+                        a             = a[np.where(a < bins[-1])]
+                        a            -= bins[0]
+                        a             = a[np.where(a >= 0)]
+                        h             = np.bincount( a, minlength=bins.shape[0]-1)
+                        hist[np.unravel_index(ii, (hist.shape[:-1]))] += h
+            except Exception as e :
+                print e
+                dropped_events += 1
 
             if rank == 0:
                 print 'no. of evnts, rank, dropped: {0:5d} {1:3} {2:3} {3} \r'.format(i, rank, dropped_events, evt.get(psana.EventId)),
