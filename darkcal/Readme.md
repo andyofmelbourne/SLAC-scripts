@@ -3,6 +3,7 @@ Takes the raw sum of all frames in a run.
 
 ### Usage
 ```
+$ . /reg/g/psdm/etc/ana_env.sh
 $ python darkcal.py -h
 usage: mpirun -np [NUM] [OPTIONS] darkcal.py [-h] [-c CONFIG] [-s SOURCE]
 

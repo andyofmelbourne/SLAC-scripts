@@ -1,5 +1,19 @@
 """
 Forward simulate a pixel histogram
+
+with the following paramters:
+    adus       
+    dark_peak  
+    sigma_to_pix 
+    photon_sig   
+    photons     
+    ns         
+    photon_adu
+    pix_per_pix 
+    pix_pad    
+    model     
+
+see hist_model for details.
 """
 
 import numpy as np
@@ -60,7 +74,9 @@ def single_photon_model_gaus(adus, sigma_to_pix, photon_adu, pix_per_pix, pix_pa
     return s01
 
 
-def hist_model(s0, sigma_to_pix, photon_sig, photons, ns, photon_adu, pix_per_pix, pix_pad, model, full_output=False):
+def hist_model(s0, sigma_to_pix = 0.1, photon_sig = 1.5, photon_adu = 30, \
+               pix_per_pix = 256, pix_pad = 3, model = 'gaus', photons = 3, \
+               ns = 0.2, poisson = True, full_output=False):
     """
     Forward simulate a pixel histogram
     
@@ -98,6 +114,10 @@ def hist_model(s0, sigma_to_pix, photon_sig, photons, ns, photon_adu, pix_per_pi
     model : 'gaus' or 'circle'
         The shape of the photon cloud on the detector.
 
+    poisson : True or False, optional, default (True)
+        If True then poisson counting statistics is used to estimate the expectation value
+        of the double, triple e.t.c events based on the scalar value of ns.
+
     full_output : True or False, optional, default (True)
         If True then return a python dictionary with extra diagnostics.
 
@@ -121,6 +141,15 @@ def hist_model(s0, sigma_to_pix, photon_sig, photons, ns, photon_adu, pix_per_pi
                 }
             
     """
+    import math
+    if poisson :
+        lamb = ns
+        ns = np.zeros((photons+1,), dtype=np.float64)
+        for k in np.arange(photons+1):
+            ns[k] = lamb**k * np.exp(-lamb) / float(math.factorial(k))
+    
+        ns = ns / np.sum(ns)
+    
     s01 = single_photon_model(s0.shape[0], sigma_to_pix, photon_adu, pix_per_pix, pix_pad, model)
     
     s1  = scipy.ndimage.filters.gaussian_filter(s01, photon_sig)

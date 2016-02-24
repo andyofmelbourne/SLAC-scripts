@@ -123,9 +123,15 @@ if __name__ == "__main__":
     def evt_to_array(evt):
         im    = evt.get(detector_psana_type, detector_psana_source)
         try :
+            # cspad
             im_np = np.array([im.quads(j).data() for j in range(im.quads_shape()[0])])
         except :
-            im_np = np.array([im.frame(j).data() for j in range(im.frame_shape()[0])])
+            try :
+                # pnccds
+                im_np = np.array([im.frame(j).data() for j in range(im.frame_shape()[0])])
+            except :
+                # opal
+                im_np = im.data16()
 
         return im_np
 
