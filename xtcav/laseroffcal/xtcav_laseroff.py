@@ -9,7 +9,7 @@ import time
 import datetime
 
 def parse_cmdline_args():
-    parser = argparse.ArgumentParser(description='write dark pedestals for xtcav to calib')
+    parser = argparse.ArgumentParser(description='write laser off calibration for xtcav to calib')
     parser.add_argument('-c', '--config', type=str, \
                         help="file name of the configuration file")
     parser.add_argument('-e', '--experiment', type=str, \
@@ -22,6 +22,9 @@ def parse_cmdline_args():
     parser.add_argument('-o', '--output', type=int, \
                 default = None, \
                 help="output directory for the psana calib files (by default this goes into the experiment calib)")
+    parser.add_argument('-b', '--bunches', type=int, \
+                default = 1, \
+                help="number of xray bunches in each frame (e.g 1 or 2)")
     args = parser.parse_args()
 
     # check that args.ini exists
@@ -40,6 +43,7 @@ def parse_cmdline_args():
         args.run        = str(params['source']['run'])
         args.maxshots   = params['params']['maxshots']
         args.output     = params['params']['output']
+        args.bunches  = params['params']['bunches']
 
     return args
 
@@ -97,9 +101,7 @@ def parse_parameters(config):
     return monitor_params
 
 
-if __name__ == '__main__':
-    args = parse_cmdline_args()
-    
+def laserOffReference(args):
     import psana
     
     # The calib line below will write the calib directory in the current directory
@@ -107,11 +109,19 @@ if __name__ == '__main__':
     # for the experiment will be used by default.
     if args.output is not None :
         psana.setOption('psana.calib-dir','calib')
+    
+    from xtcav.GenerateLasingOffReference import *
+    GLOC=GenerateLasingOffReference();
+    GLOC.experiment='xpptut15'
+    GLOC.runs=args.run
+    GLOC.maxshots=args.maxshots
+    GLOC.nb=args.bunches
+    GLOC.islandsplitmethod = 'scipyLabel'       # see confluence documentation for how to set this parameter
+    GLOC.groupsize=1                            # see confluence documentation for how to set this parameter
+    GLOC.SetValidityRange(int(args.run))        # delete second run number argument to have the validity range be open-ended ("end")
+    GLOC.Generate();
 
-    from xtcav.GenerateDarkBackground import *
-    GDB=GenerateDarkBackground();
-    GDB.experiment=args.experiment
-    GDB.runs=args.run
-    GDB.maxshots=args.maxshots
-    GDB.SetValidityRange(args.run) # delete second run number argument to have the validity range be open-ended ("end")
-    GDB.Generate();
+if __name__ == '__main__':
+    args = parse_cmdline_args()
+    laserOffReference(args)
+    

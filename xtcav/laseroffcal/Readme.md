@@ -1,13 +1,13 @@
-# xtcav_darkcal
-Takes the raw sum of all xtcav frames in a run (and some other stuff) and puts into a psana calib folder for pedestals correction. 
+# xtcav_laseroff
+Calibrates psana for xtcav analysis and puts the info into a psana calib folder.
 
 ### Usage
 ```
-$ python xtcav_darkcal.py -h
-usage: xtcav_darkcal.py [-h] [-c CONFIG] [-e EXPERIMENT] [-r RUN]
-                        [-m MAXSHOTS] [-o OUTPUT]
+$ python xtcav_laseroff.py -h
+usage: xtcav_laseroff.py [-h] [-c CONFIG] [-e EXPERIMENT] [-r RUN]
+                         [-m MAXSHOTS] [-o OUTPUT] [-b BUNCHES]
 
-write dark pedestals for xtcav to calib
+write laser off calibration for xtcav to calib
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -15,17 +15,19 @@ optional arguments:
                         file name of the configuration file
   -e EXPERIMENT, --experiment EXPERIMENT
                         psana experiment string (e.g cxi01516)
-  -r RUN, --run RUN     experiment run/s (e.g 102 or 102-110)
+  -r RUN, --run RUN     experiment run/s (e.g 101 or 101-110)
   -m MAXSHOTS, --maxshots MAXSHOTS
                         maximum number of frames to process (e.g 5000)
   -o OUTPUT, --output OUTPUT
                         output directory for the psana calib files (by default
                         this goes into the experiment calib)
+  -b BUNCHES, --bunches BUNCHES
+                        number of xray bunches in each frame (e.g 1 or 2)
 ```
 
 You can also submit a SLAC batch job:
 ```
-$ bsub -q psanaq -o test.out python xtcav_darkcal.py -c config.ini
+$ bsub -q psanaq -a mympi -n 32 -o test.out python xtcav_laseroff.py -c config.ini 
 ```
 to check the status of your jobs:
 ```
@@ -40,7 +42,7 @@ You can supply the psana data source and output file stuff through the config.in
 ```
 [source]
 exp = xpptut15
-runs = 102
+runs = 101
 
 [params]
 maxshots = 1000
@@ -48,5 +50,5 @@ output   = None
 ```
 or the command line:
 ```
-$ python xtcav_darkcal.py -e xpptut15 -r 102
+$ python xtcav_laseroff.py -e xpptut15 -r 101
 ```
