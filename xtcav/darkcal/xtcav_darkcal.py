@@ -106,7 +106,7 @@ if __name__ == '__main__':
     # For 'real' analysis during the beamtime just delete it and the calib directory
     # for the experiment will be used by default.
     if args.output is not None :
-        psana.setOption('psana.calib-dir','calib')
+        psana.setOption('psana.calib-dir',args.output)
 
     from xtcav.GenerateDarkBackground import *
     GDB=GenerateDarkBackground();

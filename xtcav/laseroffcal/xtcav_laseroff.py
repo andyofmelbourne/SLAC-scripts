@@ -108,7 +108,7 @@ def laserOffReference(args):
     # For 'real' analysis during the beamtime just delete it and the calib directory
     # for the experiment will be used by default.
     if args.output is not None :
-        psana.setOption('psana.calib-dir','calib')
+        psana.setOption('psana.calib-dir',args.output)
     
     from xtcav.GenerateLasingOffReference import *
     GLOC=GenerateLasingOffReference();
