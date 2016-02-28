@@ -239,8 +239,10 @@ def process_xtcav_loop(args, callback):
     output['power']          = None
     output['power_ecom']     = None
     output['power_erms']     = None
+    output['power_ebeam']    = None
     output['time']           = None
     output['delay']          = None
+    output['delay_gaus']     = None
     output['energyperpulse'] = None
     output['timestamp']      = None
     output['xtcav_image']    = None

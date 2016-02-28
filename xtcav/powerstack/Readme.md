@@ -3,9 +3,8 @@ Get the xray power vs time profile for every shot and save it to a h5 file (alon
 
 ### Usage
 ```
-usage: xtcav_powerstack.py [-h] [-c CONFIG] [-e EXPERIMENT] [-r RUN] [-m MODE]
-                           [-d H5DIR] [-f H5FNAM] [--matchfnam MATCHFNAM]
-                           [-b BUNCHES]
+$ python xtcav_powerstack.py -h
+usage: xtcav_powerstack.py [-h] [-c CONFIG]
 
 Get the xray power vs time profile for every shot
 
