@@ -17,6 +17,7 @@ def parse_cmdline_args():
     parser = argparse.ArgumentParser(description='Get the xray power vs time profile for every shot')
     parser.add_argument('-c', '--config', type=str, \
                         help="file name of the configuration file")
+    """
     parser.add_argument('-e', '--experiment', type=str, \
                 help="psana experiment string (e.g cxi01516)")
     parser.add_argument('-r', '--run', type=str, \
@@ -36,32 +37,30 @@ def parse_cmdline_args():
     parser.add_argument('-b', '--bunches', type=int, \
                 default = 1, \
                 help="number of xray bunches in each frame (e.g 1 or 2)")
+    """
     args = parser.parse_args()
 
     # check that args.ini exists
-    if args.config is not None :
-        if not os.path.exists(args.config):
-            raise NameError('config file does not exist: ' + args.config)
-    elif args.experiment is None :
-        raise NameError('must set --experiment or supply a config file.')
+    if not os.path.exists(args.config):
+        raise NameError('config file does not exist: ' + args.config)
 
     if args.config is not None :
         config = ConfigParser.ConfigParser()
         config.read(args.config)
         params = parse_parameters(config)
         
-        args.experiment = str(params['source']['exp'])
-        args.run        = str(params['source']['run'])
-        args.mode       = params['params']['mode']
-        args.bunches    = params['params']['bunches']
-        args.h5dir      = params['output']['h5dir']
-        args.h5fnam     = params['output']['h5fnam']
-        args.matchfnam  = params['output']['matchfnam']
-        args.calib      = params['params']['calib']
-        args.chunksize  = params['params']['chunksize']
-        args.skip       = params['params']['process_every']
+        args.experiment     = str(params['source']['exp'])
+        args.run            = str(params['source']['run'])
+        args.mode           = params['params']['mode']
+        args.bunches        = params['params']['bunches']
+        args.h5dir          = params['output']['h5dir']
+        args.h5fnam         = params['output']['h5fnam']
+        args.matchfnam      = params['output']['matchfnam']
+        args.calib          = params['params']['calib']
+        args.chunksize      = params['params']['chunksize']
+        args.skip           = params['params']['process_every']
         args.fit_gaus_delay = params['params']['fit_gaus_delay']
-        args.delay_bound = params['params']['delay_bound']
+        args.delay_bound    = params['params']['delay_bound']
     
     import string
     if args.matchfnam :

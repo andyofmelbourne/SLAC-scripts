@@ -8,6 +8,8 @@ import numpy as np
 import time
 import datetime
 
+#sys.path.append('/reg/g/psdm/sw/releases/ana-current/arch/x86_64-rhel7-gcc48-opt/python/xtcav/')
+
 def parse_cmdline_args():
     parser = argparse.ArgumentParser(description='write laser off calibration for xtcav to calib')
     parser.add_argument('-c', '--config', type=str, \
@@ -41,9 +43,10 @@ def parse_cmdline_args():
         
         args.experiment = str(params['source']['exp'])
         args.run        = str(params['source']['run'])
+        #args.mode       = str(params['source']['mode'])
         args.maxshots   = params['params']['maxshots']
         args.output     = params['params']['output']
-        args.bunches  = params['params']['bunches']
+        args.bunches    = params['params']['bunches']
 
     return args
 
@@ -110,11 +113,12 @@ def laserOffReference(args):
     if args.output is not None :
         psana.setOption('psana.calib-dir',args.output)
     
-    from xtcav.GenerateLasingOffReference import *
+    from xtcav.GenerateLasingOffReference import GenerateLasingOffReference
     GLOC=GenerateLasingOffReference();
     GLOC.experiment='xpptut15'
     GLOC.runs=args.run
     GLOC.maxshots=args.maxshots
+    #GLOC.mode=args.mode
     GLOC.nb=args.bunches
     GLOC.islandsplitmethod = 'scipyLabel'       # see confluence documentation for how to set this parameter
     GLOC.groupsize=1                            # see confluence documentation for how to set this parameter
