@@ -38,8 +38,10 @@ output   = None
 or the command line:
 ```
 $ python xtcav_darkcal.py -e xpptut15 -r 102
+```
+set ```output=None``` to use the default psana calib directory for the experiment.
 
-### Batch Job
+### Batch Jobs
 You can also submit a SLAC batch job:
 ```
 $ bsub -q psanaq -o test.out python xtcav_darkcal.py -c config.ini

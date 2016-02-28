@@ -45,7 +45,7 @@ or the command line:
 $ python xtcav_laseroff.py -e xpptut15 -r 101
 ```
 
-### Batch Job
+### Batch Jobs
 You can also submit a SLAC batch job:
 ```
 $ bsub -q psanaq -a mympi -n 32 -o test.out python xtcav_laseroff.py -c config.ini 
