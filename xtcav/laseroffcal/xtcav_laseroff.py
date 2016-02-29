@@ -115,7 +115,7 @@ def laserOffReference(args):
     
     from xtcav.GenerateLasingOffReference import GenerateLasingOffReference
     GLOC=GenerateLasingOffReference();
-    GLOC.experiment='xpptut15'
+    GLOC.experiment=args.experiment
     GLOC.runs=args.run
     GLOC.maxshots=args.maxshots
     #GLOC.mode=args.mode
