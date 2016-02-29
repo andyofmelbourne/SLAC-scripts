@@ -7,6 +7,7 @@ This is required to run any of the advanced psana modules for the lasing on even
 ```
 $ ssh psna
 $ source /reg/g/psdm/etc/ana_env.sh (or .csh)
+$ cd /reg/d/psdm/cxi/cxij6916/scratch/xtcav/SLAC-scripts/xtcav/laseroffcal
 $ python xtcav_laseroff.py -h
 usage: xtcav_laseroff.py [-h] [-c CONFIG] [-e EXPERIMENT] [-r RUN]
                          [-m MAXSHOTS] [-o OUTPUT] [-b BUNCHES]
@@ -48,15 +49,18 @@ $ python xtcav_laseroff.py -e xpptut15 -r 101
 ### Batch Jobs
 You can also submit a SLAC batch job:
 ```
+$ ssh psana
+$ source /reg/g/psdm/etc/ana_env.sh (or .csh)
+$ cd /reg/d/psdm/cxi/cxij6916/scratch/xtcav/SLAC-scripts/xtcav/laseroffcal
 $ bsub -q psanaq -a mympi -n 32 -o test.out python xtcav_laseroff.py -c config.ini 
 ```
 or, if your experiment is currently running and this is important, for the near-experimental-hall:
 ```
-$ bsub -q psnehhiprioq -a mympi -n 32 -o test.out python xtcav_darkcal.py -c config.ini
+$ bsub -q psnehhiprioq -a mympi -n 32 -o test.out python xtcav_laseroff.py -c config.ini
 ```
 for the far-experimental-hall:
 ```
-$ bsub -q psfehhiprioq -a mympi -n 32 -o test.out python xtcav_darkcal.py -c config.ini
+$ bsub -q psfehhiprioq -a mympi -n 32 -o test.out python xtcav_laseroff.py -c config.ini
 ```
 to check the status of your jobs:
 ```
