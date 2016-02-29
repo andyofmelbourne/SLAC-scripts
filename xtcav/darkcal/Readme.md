@@ -1,10 +1,12 @@
 # xtcav_darkcal
 Takes the raw sum of all xtcav frames in a run (and some other stuff) and puts into a psana calib folder for pedestals correction. 
 
+Note: I had to hack GenerateBackground.py from psana thus the export command.
 ### Usage
 ```
 $ ssh psna
 $ source /reg/g/psdm/etc/ana_env.sh (or .csh)
+$ export PYTHONPATH=/reg/g/psdm/sw/releases/ana-current/arch/x86_64-rhel7-gcc48-opt/python/xtcav/:$PYTHONPATH
 $ python xtcav_darkcal.py -h
 usage: xtcav_darkcal.py [-h] [-c CONFIG] [-e EXPERIMENT] [-r RUN]
                         [-m MAXSHOTS] [-o OUTPUT]

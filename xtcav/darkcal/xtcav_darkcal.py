@@ -108,7 +108,8 @@ if __name__ == '__main__':
     if args.output is not None :
         psana.setOption('psana.calib-dir',args.output)
 
-    from xtcav.GenerateDarkBackground import *
+    #from xtcav.GenerateDarkBackground import *
+    from GenerateDarkBackground import GenerateDarkBackground
     GDB=GenerateDarkBackground();
     GDB.experiment=args.experiment
     GDB.runs=args.run
