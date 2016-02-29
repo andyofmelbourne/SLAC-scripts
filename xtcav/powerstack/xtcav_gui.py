@@ -119,13 +119,14 @@ class Application():
 
         # delay
         #print 'event number :', event_numbers[-1]
-        self.delay.append(np.abs(output['delay'][-1][0] - output['delay'][-1][1]))
+        self.delay.append(np.abs(output['delay_gaus'][-1][1] - output['delay_gaus'][-1][0]))
         self.event_number.append(output['event_number'][-1])
+        print self.event_number[-1], self.delay[-1]
         self.w_delay.clear()
         self.w_delay.plot(np.array(self.event_number), np.array(self.delay))
         
         # xtcav images
-        scale = (-output['image_fs_scale'], output['image_MeV_scale'])
+        scale = (-output['image_fs_scale'], output['image_mev_scale'])
         if self.xtcav_init :
             self.w_xtcav.setImage(output['xtcav_image'][-1][0].T, scale = scale)
             self.xtcav_init = False
@@ -135,9 +136,9 @@ class Application():
         self.w_xtcav.getView().invertY(False)
 
 if __name__ == "__main__":
-    args = parse_cmdline_args()
+    args, params = parse_cmdline_args()
     
     if rank == 0 :
         app = Application()
     
-    process_xtcav_loop(args, send_to_gui)
+    process_xtcav_loop(args, params, send_to_gui)

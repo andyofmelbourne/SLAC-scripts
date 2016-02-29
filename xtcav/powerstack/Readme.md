@@ -27,13 +27,21 @@ You can supply the psana data source and output file stuff through the config.in
 ```
 $ h5ls -r xpptut15-r0124-xtcav-powerstack.h5 
 /                        Group
-/delay                   Dataset {3400/Inf, 1}
-/energy_per_pulse        Dataset {3400/Inf, 1}
-/event_number            Dataset {3400/Inf, 1, 72}
-/event_numbers           Dataset {3400/Inf}
-/time_fs                 Dataset {3400/Inf, 1, 72}
-/timestamp               Dataset {3400/Inf}
-/xray_power              Dataset {3400/Inf, 1, 72}
+/delay                   Dataset {10/Inf, 1}
+/delay_gaus              Dataset {10/Inf, 2}
+/energyperpulse          Dataset {10/Inf, 1}
+/event_number            Dataset {10/Inf}
+/image_fs_scale          Dataset {10/Inf}
+/image_mev_scale         Dataset {10/Inf}
+/ok                      Dataset {10/Inf}
+/power                   Dataset {10/Inf, 1, 72}
+/power_ebeam             Dataset {10/Inf, 100}
+/power_ecom              Dataset {10/Inf, 1, 72}
+/power_erms              Dataset {10/Inf, 1, 72}
+/reconstruction_agreement Dataset {10/Inf}
+/time                    Dataset {10/Inf, 1, 72}
+/timestamp               Dataset {10/Inf}
+/xtcav_image             Dataset {10/Inf, 1, 350, 100}
 ```
 
 ### config.ini 

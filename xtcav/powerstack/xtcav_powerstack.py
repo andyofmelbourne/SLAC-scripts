@@ -7,6 +7,7 @@ import ConfigParser
 import numpy as np
 import time
 import datetime
+import copy
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -49,18 +50,42 @@ def parse_cmdline_args():
         config.read(args.config)
         params = parse_parameters(config)
         
+        # source
         args.experiment     = str(params['source']['exp'])
         args.run            = str(params['source']['run'])
-        args.mode           = params['params']['mode']
-        args.bunches        = params['params']['bunches']
-        args.h5dir          = params['output']['h5dir']
-        args.h5fnam         = params['output']['h5fnam']
-        args.matchfnam      = params['output']['matchfnam']
+        args.mode           = params['source']['mode']
+
+        # params
         args.calib          = params['params']['calib']
+        args.maxshots       = params['params']['maxshots']
+        args.bunches        = params['params']['bunches']
         args.chunksize      = params['params']['chunksize']
-        args.skip           = params['params']['process_every']
-        args.fit_gaus_delay = params['params']['fit_gaus_delay']
+        args.process_every  = params['params']['process_every']
         args.delay_bound    = params['params']['delay_bound']
+
+        # output
+        args.h5fnam          = params['output']['h5fnam']
+        args.matchfnam       = params['output']['matchfnam']
+        args.h5dir           = params['output']['h5dir']
+
+        # output_items
+        if rank == 0 :
+            for k in params['output_items'].keys():
+                print k, params['output_items'][k]
+        args.power           = params['output_items']['power']
+        args.power_ecom      = params['output_items']['power_ecom']
+        args.power_erms      = params['output_items']['power_erms']
+        args.power_ebeam     = params['output_items']['power_ebeam']
+        args.time            = params['output_items']['time']
+        args.delay           = params['output_items']['delay']
+        args.delay_gaus      = params['output_items']['delay_gaus']
+        args.energyperpulse  = params['output_items']['energyperpulse']
+        args.timestamp       = params['output_items']['timestamp']
+        args.xtcav_image     = params['output_items']['xtcav_image']
+        args.event_number    = params['output_items']['event_number']
+        args.image_fs_scale  = params['output_items']['image_fs_scale']
+        args.image_mev_scale = params['output_items']['image_mev_scale']
+        args.reconstruction_agreement = params['output_items']['reconstruction_agreement']
     
     import string
     if args.matchfnam :
@@ -72,7 +97,7 @@ def parse_cmdline_args():
 
     args.source = 'exp='+args.experiment+':'+'run='+str(args.run)+args.mode
 
-    return args
+    return args, params
 
 
 def parse_parameters(config):
@@ -172,6 +197,13 @@ def write_h5(fnam, path, index, data):
     except Exception as e :
         dset = f.create_dataset(path, data.shape, maxshape = (None,) + data[0].shape, dtype=data.dtype)
 
+    print '\n'
+    print 'index : index + data.shape[0]', index , index + data.shape[0]
+    if path == 'event_number' :
+        print '\n'
+        print 'index : index + data.shape[0]', index , index + data.shape[0]
+        print 'data', data
+
     dset[index : index + data.shape[0]] = data 
     f.close()
 
@@ -202,9 +234,12 @@ def collect_and_write(fnam, processed_events, chunksize, stuff):
     # write to file
     if rank == 0 :
         for k in stuff_tot.keys():
+            if k == 'event_number':
+                print 'writing', k, processed_events, stuff_tot[k][j].shape
+                print stuff_tot[k][j]
             write_h5(fnam, k, processed_events, stuff_tot[k][j])
 
-def process_xtcav_loop(args, callback):
+def process_xtcav_loop(args, params, callback):
     """
     loops over xtcav events then calls 'callback' after every 
     rank has processed args.chunksize.
@@ -236,134 +271,180 @@ def process_xtcav_loop(args, callback):
     skipped             = 0
     
     output = {}
-    output['power']          = None
-    output['power_ecom']     = None
-    output['power_erms']     = None
-    output['power_ebeam']    = None
-    output['time']           = None
-    output['delay']          = None
-    output['delay_gaus']     = None
-    output['energyperpulse'] = None
-    output['timestamp']      = None
-    output['xtcav_image']    = None
-    output['event_number']   = None
-    output['image_fs_scale'] = None
-    output['image_MeV_scale']= None
-    output['reconstruction_agreement'] = None
+    output['ok'] = None
+    for k in params['output_items'].keys() :
+        if params['output_items'][k] :
+            output[k] = None
+        else :
+            output[k] = False
+    
+    event  = copy.copy(output)
+    init = True
 
     for i, evt in enumerate(ds.events()):
+        """
+        Process the event: 
+            - A 'processed_event' is an event that has xtcav data in it
+            - A 'dropped_event' is an event that this rank attempted to analyse but could not
+            - A 'processed_event_me' is an event that this rank processed successfully
+            - A 'skipped' event is an event that has xtcav data but that we intentionally skip to speed up analysis
+        """
         if not XTCAVRetrieval.SetCurrentEvent(evt):         
             continue
          
         processed_events += 1
         
-        if processed_events % size != rank: continue     # different ranks look at different events
+        # different ranks look at different events
+        if processed_events % size != rank: continue     
 
-        if skipped != args.skip :
+        # skip to speed things up
+        if skipped != args.process_every:
             skipped += 1
             continue
         else :
             skipped = 0
             
+        #===============
+        # event analysis
+        #===============
         try :
-            timestamp           = evt.get(psana.EventId).__str__()
-            t, power      , ok1 = XTCAVRetrieval.XRayPower()  
-            t, power_ecom , ok2 = XTCAVRetrieval.XRayPowerCOMBased()  
-            t, power_erms , ok3 = XTCAVRetrieval.XRayPowerRMSBased()  
+            ok = []
+            event['event_number'] = i
+            if output['timestamp'] is not False :
+                event['timestamp'] = evt.get(psana.EventId).__str__()
+            if output['power'] is not False :
+                event['time'], event['power'], okt = XTCAVRetrieval.XRayPower()  
+                ok.append(okt)
+            if output['power_ecom'] is not False :
+                event['time'], event['power_ecom'], okt = XTCAVRetrieval.XRayPowerCOMBased()  
+                ok.append(okt)
+            if output['power_erms'] is not False :
+                event['time'], event['power_erms'] , okt = XTCAVRetrieval.XRayPowerRMSBased()  
+                ok.append(okt)
+            if output['power_ebeam'] is not False :
+                xtcav, okt = XTCAVRetrieval.ProcessedXTCAVImage()
+                event['power_ebeam'] = np.sum(xtcav, axis=(0, 1))
+                ok.append(okt)
+            if output['delay'] is not False :
+                event['delay'], okt = XTCAVRetrieval.InterBunchPulseDelayBasedOnCurrent()        
+                ok.append(okt)
+            if output['energyperpulse'] is not False :
+                event['energyperpulse'], okt = XTCAVRetrieval.XRayEnergyPerBunch()
+                ok.append(okt)
+            if output['xtcav_image'] is not False :
+                event['xtcav_image'], okt = XTCAVRetrieval.ProcessedXTCAVImage()
+                ok.append(okt)
+            if output['image_fs_scale'] is not False :
+                event['image_fs_scale'] = XTCAVRetrieval._eventresultsstep2['PU']['xfsPerPix']
+            if output['image_mev_scale'] is not False :
+                event['image_mev_scale'] = XTCAVRetrieval._eventresultsstep2['PU']['yMeVPerPix']
+            if output['reconstruction_agreement'] is not False :
+                event['reconstruction_agreement'], okt = XTCAVRetrieval.ReconstructionAgreement()
+                ok.append(okt)
 
             # delay calculation
-            if args.fit_gaus_delay :
-                p0, p1, ok4 = gaus2_fit(np.sum(power, axis=0), x = t[0], return_fit = False)
+            if output['delay_gaus'] is not False :
+                p0, p1, okt = gaus2_fit(np.sum(event['power'], axis=0), x = event['time'][0], return_fit = False)
                 dp = p1[1] - p0[1]
-
-                if np.abs(dp) > args.delay_bound :
-                    ok4 = False
-                    delay = np.array([0.0, 0.0])
+                
+                if np.abs(dp) > args.delay_bound or okt is False :
+                    delay_gaus = np.array([0.0, 0.0])
                 elif dp > 0. :
-                    delay       = np.array([p0[1], p1[1]]) 
+                    event['delay_gaus'] = np.array([p0[1], p1[1]]) 
                 else :
-                    delay       = np.array([p1[1], p0[1]]) 
-                print np.abs(dp)
-            else :
-                delay, ok4  = XTCAVRetrieval.InterBunchPulseDelayBasedOnCurrent()        
-            
-            energyperpulse, ok5 = XTCAVRetrieval.XRayEnergyPerBunch()
-            xtcav_image   , ok6 = XTCAVRetrieval.ProcessedXTCAVImage()
-            reconstruction_agreement, ok7 = XTCAVRetrieval.ReconstructionAgreement()
-            fs_scale            = XTCAVRetrieval._eventresultsstep2['PU']['xfsPerPix']
-            mev_scale           = XTCAVRetrieval._eventresultsstep2['PU']['yMeVPerPix']
+                    event['delay_gaus'] = np.array([p1[1], p0[1]]) 
                     
-            ok = ok1 and ok2 and ok3 and ok4
-
+            okt = True 
+            for o in ok :
+                okt = okt and o
+            ok = okt
+            event['ok'] = ok
+            
             if not ok :
                 dropped_events += 1
+            else :
+                processed_events_me += 1
 
         except Exception as e:
             print e
-            power           = None
             ok              = False
             dropped_events += 1
        
-        if output['power'] is None and power is not None :
-            output['power']          = np.zeros( (args.chunksize, ) + power.shape, dtype=np.float32)
-            output['power_ecom']     = np.zeros( (args.chunksize, ) + power.shape, dtype=np.float32)
-            output['power_erms']     = np.zeros( (args.chunksize, ) + power.shape, dtype=np.float32)
-            output['time']           = np.zeros( (args.chunksize, ) + t.shape, dtype=np.float32)
-            output['delay']          = np.zeros( (args.chunksize, ) + delay.shape,  dtype=np.float32)
-            output['energyperpulse'] = np.zeros( (args.chunksize, ) + energyperpulse.shape,  dtype=np.float32)
-            output['xtcav_image']    = np.zeros( (args.chunksize, ) + xtcav_image.shape,  dtype=np.float32)
-            output['event_number']   = np.zeros( (args.chunksize, ),  dtype=np.int64)
-            output['image_fs_scale'] = np.zeros( (args.chunksize, ),  dtype=np.float)
-            output['image_MeV_scale']= np.zeros( (args.chunksize, ),  dtype=np.float)
-            output['reconstruction_agreement'] = np.zeros( (args.chunksize, ), dtype=np.float)
-            #
-            timestamp  = np.array(timestamp)
-            output['timestamp'] = np.zeros( (args.chunksize, ) + timestamp.shape,  dtype=timestamp.dtype)
+        #=========================
+        # initialise output arrays
+        #=========================
+        if init and ok :
+            for k in event.keys() :
+                if type(event[k]) == np.ndarray :
+                    shape = list((args.chunksize, ) + event[k].shape)
+                    if k == 'xtcav_image' :
+                        shape[-1] = 100
+                        shape[-2] = 350
+                    elif k == 'power_ebeam' :
+                        shape[-1] += 100
+                    output[k] = np.zeros( shape, dtype=event[k].dtype)
 
-        j = processed_events_me % args.chunksize
+                if type(event[k]) in [float, np.float64, np.float32] :
+                    output[k] = np.zeros( (args.chunksize, ), dtype=np.float)
+                
+                if type(event[k]) == int :
+                    output[k] = np.zeros( (args.chunksize, ), dtype=np.int)
 
-        output['event_number'][j] = i
+                if type(event[k]) == bool :
+                    output[k] = np.zeros( (args.chunksize, ), dtype=np.bool)
+            
+            event['timestamp']  = np.array(event['timestamp'])
+            output['timestamp'] = np.zeros( (args.chunksize, ) + event['timestamp'].shape,  \
+                                            dtype=event['timestamp'].dtype)
+            init = False
+
+        #===================================
+        # append event data to output arrays
+        #===================================
         if ok :
-            output['power'][j]          = np.abs(power) # hack because of bad reference
-            output['power_ecom'][j]     = np.abs(power_ecom) # hack because of bad reference
-            output['power_erms'][j]     = np.abs(power_erms) # hack because of bad reference
-            output['time'][j]           = t
-            output['delay'][j]          = delay
-            output['energyperpulse'][j] = energyperpulse
-            output['timestamp'][j]      = timestamp
-            output['image_fs_scale'][j] = fs_scale
-            output['image_MeV_scale'][j]= mev_scale
-            output['reconstruction_agreement'][j]= reconstruction_agreement
+            j = (processed_events_me - 1) % args.chunksize
+            print '\n'
+            print ok, processed_events_me, j, event['event_number']
             
-            # pretty anoying, the xtcav images change shape
-            shape   = list(output['xtcav_image'].shape)
-            shape_p = xtcav_image.shape
-            if shape_p[1] > shape[2]:
-                shape[2] = shape_p[1]
+            for k in event.keys():
+                if k not in ['xtcav_image', 'power_ebeam'] :
+                    output[k][j] = event[k]
+                elif k == 'xtcav_image' :
+                    # pretty anoying, the xtcav images change shape
+                    shape   = list(output['xtcav_image'].shape)
+                    shape_p = event['xtcav_image'].shape
+                    if shape_p[1] > shape[2]:
+                        shape[2] = shape_p[1]
 
-            if shape_p[2] > shape[3]:
-                shape[3] = shape_p[2]
-            
-            output['xtcav_image'].resize(shape) 
-            
-            output['xtcav_image'][j][:, :shape_p[1], :shape_p[2]] = xtcav_image
-
+                    if shape_p[2] > shape[3]:
+                        shape[3] = shape_p[2]
+                    
+                    output['xtcav_image'].resize(shape) 
+                    output['xtcav_image'][j][:, :shape_p[1], :shape_p[2]] = event['xtcav_image']
+                    
+                    if 'power_ebeam' in event.keys():
+                        shape_e = list(output['power_ebeam'].shape)
+                        shape_e[-1] = shape[-1]
+                        output['power_ebeam'].resize(shape_e) 
+                        output['power_ebeam'][j][:shape_p[2]] = event['power_ebeam'] 
+                #print '\n'
+                #print k
+                #print output[k][j]
+        
         if rank == 0 :
-            print 'no. of evnts, processed, dropped: {0:5d} {1:3} {2:3} {3} \r'.format(i, processed_events_me, dropped_events, tiemstamp),
+            print 'no. of evnts, processed, dropped: {0:5d} {1:3} {2:3} {3} \r'.format(i, processed_events_me, dropped_events, event['timestamp']),
             sys.stdout.flush() 
 
-        processed_events_me += 1
-
         # collect to rank 0:
-        if processed_events_me % args.chunksize == 0 :
-            callback(processed_events, output)
+        if processed_events_me % args.chunksize == 0 and processed_events_me > 0:
+            callback(size * processed_events_me - args.chunksize, output)
 
 if __name__ == "__main__":
-    args = parse_cmdline_args()
+    args, params = parse_cmdline_args()
     
     def callback(processed_events, output):
         fnam = args.h5dir + args.h5fnam
         collect_and_write(fnam, processed_events, args.chunksize, output)
 
-    process_xtcav_loop(args, callback)
+    process_xtcav_loop(args, params, callback)
 
