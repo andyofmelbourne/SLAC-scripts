@@ -120,6 +120,20 @@ $ tail -f test.out
 It is also possible to reserve some high priority cores in an interactive session:
 ```
 $ bsub -q psfehhiprioq -n 16 -Is /bin/bash 
+$ cd /reg/d/psdm/cxi/cxij6916/scratch/xtcav/SLAC-scripts/xtcav/powerstack
 $ mpirun -np 16 python xtcav_powerstack.py -c config.ini
 ```
-Note: this is untested.
+
+#### GUI    
+For the gui you will need X forwarding which the above does not provide:
+```
+$ bsub -q psfehhiprioq -n 16 -Is /bin/bash 
+```
+not the psana machine you log into (e.g. psana1606) then open a new terminal and run:
+```
+$ ssh -X psana1606
+$ source /reg/g/psdm/etc/ana_env.sh 
+$ cd /reg/d/psdm/cxi/cxij6916/scratch/xtcav/SLAC-scripts/xtcav/powerstack
+$ mpirun -np 2 python xtcav_gui.py -c config_gui.ini
+```
+Note: this is now tested.
