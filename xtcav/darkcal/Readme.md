@@ -43,6 +43,14 @@ $ python xtcav_darkcal.py -e xpptut15 -r 102
 ```
 set ```output=None``` to use the default psana calib directory for the experiment.
 
+
+Note: if the dark run is written after the lasing off run this may cause problems when you run the lasing off calibration. To fix these problems just edit the file:
+```
+$ cd /reg/d/psdm/cxi/cxij6916/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals
+$ mv <run>-end.data <run2>-end.data
+```
+where ```<run>``` is the dark run and <run2> is the first run that you would like this dark calibration to apply to.
+
 ### Batch Jobs
 You can also submit a SLAC batch job:
 ```
