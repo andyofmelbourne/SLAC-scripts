@@ -127,6 +127,7 @@ $ mpirun -np 16 python xtcav_powerstack.py -c config.ini
 #### GUI    
 For the gui you will need X forwarding which the above does not provide:
 ```
+$ ssh psana
 $ bsub -q psfehhiprioq -n 16 -Is /bin/bash 
 ```
 not the psana machine you log into (e.g. psana1606) then open a new terminal and run:
@@ -135,5 +136,10 @@ $ ssh -X psana1606
 $ source /reg/g/psdm/etc/ana_env.sh 
 $ cd /reg/d/psdm/cxi/cxij6916/scratch/xtcav/SLAC-scripts/xtcav/powerstack
 $ mpirun -np 2 python xtcav_gui.py -c config_gui.ini
+
+When you are done, make sure to exit in order to free the node
 ```
-Note: this is now tested.
+$ exit
+```
+Four windows should apear on the screen and start to stream events. When the run is over just use CTR-C, set the new run in config_gui.ini and rerun the last line above.
+Note: you must specify the run number in config_gui.ini.

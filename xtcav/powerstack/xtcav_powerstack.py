@@ -14,6 +14,8 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
+rank_debug = 1
+
 def parse_cmdline_args():
     parser = argparse.ArgumentParser(description='Get the xray power vs time profile for every shot')
     parser.add_argument('-c', '--config', type=str, \
@@ -58,10 +60,14 @@ def parse_cmdline_args():
         # params
         args.calib          = params['params']['calib']
         args.maxshots       = params['params']['maxshots']
+        if args.maxshots is None :
+            args.maxshots = np.inf
         args.bunches        = params['params']['bunches']
         args.chunksize      = params['params']['chunksize']
         args.process_every  = params['params']['process_every']
         args.delay_bound    = params['params']['delay_bound']
+        if args.delay_bound is None or args.delay_bound is 'inf':
+            args.delay_bound = np.inf
 
         # output
         args.h5fnam          = params['output']['h5fnam']
@@ -69,9 +75,10 @@ def parse_cmdline_args():
         args.h5dir           = params['output']['h5dir']
 
         # output_items
-        if rank == 0 :
+        if rank == rank_debug : print '\nLoading output items from the config file:'
+        if rank == rank_debug :
             for k in params['output_items'].keys():
-                print k, params['output_items'][k]
+                print '\t', k, params['output_items'][k]
         args.power           = params['output_items']['power']
         args.power_ecom      = params['output_items']['power_ecom']
         args.power_erms      = params['output_items']['power_erms']
@@ -178,7 +185,8 @@ def gaus2_fit(y, x = None , return_fit = False):
     if x is None :
         x = np.indices(y.shape)[0].astype(np.float64)
     
-    p0 = np.random.random((6))
+    #p0 = np.random.random((6))
+    p0 = np.array([20., -40., 3., 20, +40., 3.])
     residual = lambda i : gaus2(x, *i) - y
     popt, flag = scipy.optimize.leastsq(residual, p0)
     
@@ -188,23 +196,20 @@ def gaus2_fit(y, x = None , return_fit = False):
         return popt[:3], popt[3:], flag
 
 
-def write_h5(fnam, path, index, data):
+def write_h5(fnam, path, processed, data):
     import h5py
     f = h5py.File(fnam, 'a')
     try :
         dset = f[path]
-        dset.resize(index + data.shape[0], axis = 0)
+        dset.resize(processed, axis = 0)
     except Exception as e :
         dset = f.create_dataset(path, data.shape, maxshape = (None,) + data[0].shape, dtype=data.dtype)
 
     print '\n'
-    print 'index : index + data.shape[0]', index , index + data.shape[0]
-    if path == 'event_number' :
-        print '\n'
-        print 'index : index + data.shape[0]', index , index + data.shape[0]
-        print 'data', data
+    print 'processed - data.shape[0]: processed', processed - data.shape[0], processed
 
-    dset[index : index + data.shape[0]] = data 
+    print path, dset.shape, data.shape
+    dset[processed - data.shape[0]: processed] = data 
     f.close()
 
 
@@ -212,7 +217,7 @@ def collect(data):
     if rank == 0 :
         data_rec = [data.copy()]
         for i in range(1, size):
-            #print 'gathering data from rank:', i
+            print 'gathering data from rank:', i
             data_rec.append( comm.recv(source = i, tag = i) )
         data = np.array([e for es in data_rec for e in es])
     else :
@@ -222,21 +227,21 @@ def collect(data):
 
 def collect_and_write(fnam, processed_events, chunksize, stuff):
     stuff_tot  = {}
+    print 'rank: ', rank, 'collecting: event_number'
     stuff_tot['event_number'] = collect(stuff['event_number'])
     
     if rank == 0 :
         j = np.argsort(stuff_tot['event_number'])
     
     for k in stuff.keys():
-        if k != 'event_number':
+        if k != 'event_number' and stuff[k] is not False :
+            print 'rank: ', rank, 'collecting: ', k
             stuff_tot[k] = collect(stuff[k])
 
     # write to file
     if rank == 0 :
         for k in stuff_tot.keys():
-            if k == 'event_number':
-                print 'writing', k, processed_events, stuff_tot[k][j].shape
-                print stuff_tot[k][j]
+            print 'writing', k, processed_events, stuff_tot[k][j].shape
             write_h5(fnam, k, processed_events, stuff_tot[k][j])
 
 def process_xtcav_loop(args, params, callback):
@@ -253,7 +258,7 @@ def process_xtcav_loop(args, params, callback):
         print 'loading psana calib dir:', args.calib
         psana.setOptions( { 'psana.calib-dir' : args.calib, 'psana.allow-corrupt-epics' : True } )
 
-    print 'sourcing:', args.source
+    if rank == rank_debug : print 'sourcing:', args.source
     ds = psana.DataSource(args.source)
 
     #XTCAV Retrieval (setting the data source is useful to get information such as experiment name)
@@ -263,18 +268,20 @@ def process_xtcav_loop(args, params, callback):
     xtcavType   = psana.Camera.FrameV1
     xtcavCamera = psana.Source('DetInfo(XrayTransportDiagnostic.0:Opal1000.0)')
 
-    if rank == 0 : print '\nOutputing to :', args.h5dir + args.h5fnam
+    if rank == rank_debug : print '\nOutputing to :', args.h5dir + args.h5fnam
 
     processed_events_me = 0
     processed_events    = 0
     dropped_events      = 0
     skipped             = 0
     
+    if rank == rank_debug : print '\noutputing:'
     output = {}
     output['ok'] = None
     for k in params['output_items'].keys() :
         if params['output_items'][k] :
             output[k] = None
+            if rank == rank_debug : print '\t', k
         else :
             output[k] = False
     
@@ -334,6 +341,7 @@ def process_xtcav_loop(args, params, callback):
             if output['xtcav_image'] is not False :
                 event['xtcav_image'], okt = XTCAVRetrieval.ProcessedXTCAVImage()
                 ok.append(okt)
+
             if output['image_fs_scale'] is not False :
                 event['image_fs_scale'] = XTCAVRetrieval._eventresultsstep2['PU']['xfsPerPix']
             if output['image_mev_scale'] is not False :
@@ -344,7 +352,7 @@ def process_xtcav_loop(args, params, callback):
 
             # delay calculation
             if output['delay_gaus'] is not False :
-                p0, p1, okt = gaus2_fit(np.sum(event['power'], axis=0), x = event['time'][0], return_fit = False)
+                p0, p1, okt = gaus2_fit(np.abs(np.sum(event['power'], axis=0)), x = event['time'][0], return_fit = False)
                 dp = p1[1] - p0[1]
                 
                 if np.abs(dp) > args.delay_bound or okt is False :
@@ -353,7 +361,11 @@ def process_xtcav_loop(args, params, callback):
                     event['delay_gaus'] = np.array([p0[1], p1[1]]) 
                 else :
                     event['delay_gaus'] = np.array([p1[1], p0[1]]) 
-                    
+
+                if event['delay_gaus'] is None :
+                    okt = False
+                ok.append(okt)
+
             okt = True 
             for o in ok :
                 okt = okt and o
@@ -365,6 +377,8 @@ def process_xtcav_loop(args, params, callback):
             else :
                 processed_events_me += 1
 
+            if not ok :
+                dropped_events += 1
         except Exception as e:
             print e
             ok              = False
@@ -374,28 +388,38 @@ def process_xtcav_loop(args, params, callback):
         # initialise output arrays
         #=========================
         if init and ok :
+            if rank == rank_debug : print '\ninitialising arrays:'
             for k in event.keys() :
-                if type(event[k]) == np.ndarray :
-                    shape = list((args.chunksize, ) + event[k].shape)
-                    if k == 'xtcav_image' :
-                        shape[-1] = 100
-                        shape[-2] = 350
-                    elif k == 'power_ebeam' :
-                        shape[-1] += 100
-                    output[k] = np.zeros( shape, dtype=event[k].dtype)
+                if output[k] is not False :
+                    if type(event[k]) == np.ndarray :
+                        shape = list((args.chunksize, ) + event[k].shape)
+                        if k == 'xtcav_image' :
+                            shape[-1] = 512
+                            shape[-2] = 512
+                        elif k == 'power_ebeam' :
+                            shape[-1] = 512
+                        output[k] = np.zeros( shape, dtype=event[k].dtype)
 
-                if type(event[k]) in [float, np.float64, np.float32] :
-                    output[k] = np.zeros( (args.chunksize, ), dtype=np.float)
-                
-                if type(event[k]) == int :
-                    output[k] = np.zeros( (args.chunksize, ), dtype=np.int)
+                    if type(event[k]) in [float, np.float64, np.float32] :
+                        output[k] = np.zeros( (args.chunksize, ), dtype=np.float)
+                    
+                    if type(event[k]) == int :
+                        output[k] = np.zeros( (args.chunksize, ), dtype=np.int)
 
-                if type(event[k]) == bool :
-                    output[k] = np.zeros( (args.chunksize, ), dtype=np.bool)
+                    if type(event[k]) == bool :
+                        output[k] = np.zeros( (args.chunksize, ), dtype=np.bool)
+                    
+                    if output[k] is not None :
+                        if rank == rank_debug : print '\t', k, 
+                        if rank == rank_debug : print output[k].dtype, output[k].shape
+
             
             event['timestamp']  = np.array(event['timestamp'])
             output['timestamp'] = np.zeros( (args.chunksize, ) + event['timestamp'].shape,  \
                                             dtype=event['timestamp'].dtype)
+            if rank == rank_debug : print '\t', 'timestamp',
+            if rank == rank_debug : print output['timestamp']
+            if rank == rank_debug : print output['timestamp'].dtype, output['timestamp'].shape
             init = False
 
         #===================================
@@ -403,13 +427,13 @@ def process_xtcav_loop(args, params, callback):
         #===================================
         if ok :
             j = (processed_events_me - 1) % args.chunksize
-            print '\n'
-            print ok, processed_events_me, j, event['event_number']
             
             for k in event.keys():
                 if k not in ['xtcav_image', 'power_ebeam'] :
-                    output[k][j] = event[k]
-                elif k == 'xtcav_image' :
+                    if output[k] is not False :
+                        output[k][j] = event[k]
+                        if rank == rank_debug : print 'assigning:', k
+                elif k == 'xtcav_image' and event['xtcav_image'] is not False :
                     # pretty anoying, the xtcav images change shape
                     shape   = list(output['xtcav_image'].shape)
                     shape_p = event['xtcav_image'].shape
@@ -419,25 +443,32 @@ def process_xtcav_loop(args, params, callback):
                     if shape_p[2] > shape[3]:
                         shape[3] = shape_p[2]
                     
-                    output['xtcav_image'].resize(shape) 
-                    output['xtcav_image'][j][:, :shape_p[1], :shape_p[2]] = event['xtcav_image']
+                    if output['xtcav_image'] is not False :
+                        output['xtcav_image'].resize(shape) 
+                        output['xtcav_image'][j][:, :shape_p[1], :shape_p[2]] = event['xtcav_image']
+                        if rank == rank_debug : print 'assigning: xtcav_image'
                     
-                    if 'power_ebeam' in event.keys():
+                    if 'power_ebeam' in event.keys() and output['power_ebeam'] is not False :
                         shape_e = list(output['power_ebeam'].shape)
                         shape_e[-1] = shape[-1]
                         output['power_ebeam'].resize(shape_e) 
                         output['power_ebeam'][j][:shape_p[2]] = event['power_ebeam'] 
+                        if rank == rank_debug : print 'assigning: power_ebeam'
                 #print '\n'
                 #print k
                 #print output[k][j]
         
-        if rank == 0 :
-            print 'no. of evnts, processed, dropped: {0:5d} {1:3} {2:3} {3} \r'.format(i, processed_events_me, dropped_events, event['timestamp']),
-            sys.stdout.flush() 
+        if rank == rank_debug :
+            print 'no. of evnts, processed, dropped: {0:5d} {1:3} {2:3} {3} \r'.format(i, processed_events_me, dropped_events, event['timestamp'])
 
         # collect to rank 0:
         if processed_events_me % args.chunksize == 0 and processed_events_me > 0:
-            callback(size * processed_events_me - args.chunksize, output)
+            print '\n', 'rank', rank, 'collecting. processed_events_me:', processed_events_me
+            callback(size * processed_events_me, output)
+
+        if size * processed_events_me > args.maxshots :
+            print 'All done!!!'
+            sys.exit()
 
 if __name__ == "__main__":
     args, params = parse_cmdline_args()

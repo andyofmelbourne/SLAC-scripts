@@ -34,7 +34,7 @@ class Application():
     
     def __init__(self):
         # start a pyqtgraph application (sigh...)
-        self.buffer_depth = 100
+        self.buffer_depth = 1000
         
         # Always start by initializing Qt (only once per application)
         app = QtGui.QApplication([])
@@ -73,7 +73,7 @@ class Application():
         bottom.setLabel('delay (fs)')
 
         left = self.plt_xtcav.getAxis('left')
-        left.setLabel('power (MeV)')
+        left.setLabel('electron energy (MeV)')
 
         ## Start the Qt event loop
         signal.signal(signal.SIGINT, signal.SIG_DFL)    # allow Control-C
