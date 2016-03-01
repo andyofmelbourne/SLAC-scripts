@@ -128,7 +128,7 @@ $ mpirun -np 16 python xtcav_powerstack.py -c config.ini
 For the gui you will need X forwarding which the above does not provide:
 ```
 $ ssh psana
-$ bsub -q psfehhiprioq -n 16 -Is /bin/bash 
+$ bsub -q psfehhiprioq -n 2 -Is /bin/bash 
 ```
 not the psana machine you log into (e.g. psana1606) then open a new terminal and run:
 ```
