@@ -207,8 +207,9 @@ if __name__ == "__main__":
                     buffer -= darkcal
                     
                     # common mode
-                    medians  = np.median(buffer, axis=-1)
-                    buffer  -= medians[..., np.newaxis]
+                    if params['histogram']['common_mode'] == 'median':
+                        medians  = np.median(buffer, axis=-1)
+                        buffer  -= medians[..., np.newaxis]
 
                     # add the histogram of the buffer to the histogram
                     # ------------------------------------------------
