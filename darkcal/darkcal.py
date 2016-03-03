@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
     dropped_events = 0
     for run in ds.runs():
-        times = run.times()
+        times = run.times()[: params['params']['maxshots']]
         mylength = len(times) / size
         mytimes = times[rank*mylength:(rank+1)*mylength]
         if rank == 0 :
