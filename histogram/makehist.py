@@ -210,6 +210,8 @@ if __name__ == "__main__":
                     if params['histogram']['common_mode'] == 'median':
                         medians  = np.median(buffer, axis=-1)
                         buffer  -= medians[..., np.newaxis]
+                    else :
+                        medians = None
 
                     # add the histogram of the buffer to the histogram
                     # ------------------------------------------------
